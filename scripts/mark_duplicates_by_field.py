@@ -1,0 +1,165 @@
+##################################################################################################
+#                                        SCRIPT OVERVIEW                                         #
+#                                                                                                #
+# This script compares the value of a specified field from documents in a source MongoDB         #
+# collection against a target collection (which may be in a different database).                 #
+# If a matching value is found in the target collection, the document in the source collection   #
+# is marked with a "duplicated": true field.                                                     #
+#                                                                                                #
+# Key Features:                                                                                  #
+# - Compares field values between two collections.                                               #
+# - Updates documents in the source collection by adding a "duplicated": true field.             #
+# - Uses batch processing for efficiency.                                                        #
+# - Implements multithreading to process large datasets faster.                                  #
+#                                                                                                #
+# Configuration Variables:                                                                       #
+# - SOURCE_DATABASE: Database name of the source collection.                                     #
+# - TARGET_DATABASE: Database name of the destination collection.                                #
+# - SOURCE_COLLECTION: Name of the source collection to mark duplicates in.                      #
+# - TARGET_COLLECTION: Name of the collection that holds the reference values.                   #
+# - FIELD_TO_COMPARE: The field name whose values will be compared.                              #
+# - BATCH_SIZE: Number of documents to process in each batch.                                    #
+# - MAX_WORKERS: Number of threads for parallel processing.                                      #
+##################################################################################################
+
+##################################################################################################
+#                                            IMPORTS                                             #
+##################################################################################################
+
+from utils.database_connections import MongoDBConnection            # Database connection
+from utils.logs_config import logger                                # Logs and events
+from tqdm import tqdm                                               # Progress bar
+from concurrent.futures import ThreadPoolExecutor, as_completed     # Multithreading support
+from os import cpu_count                                            # Optimized MAX_WORKERS num
+
+##################################################################################################
+#                                          CONSTANTS                                             #
+##################################################################################################
+
+BATCH_SIZE = 500            # Number of documents per batch
+MAX_WORKERS = cpu_count()   # Number of parallel threads
+
+SOURCE_DATABASE = "SOURCE_DATABASE"         # Source database name
+SOURCE_COLLECTION = "SOURCE_COLLECTION"     # Source collection name
+
+TARGET_DATABASE = "TARGET_DATABASE"         # Target database name
+TARGET_COLLECTION = "TARGET_COLLECTION"     # Target collection name
+
+FIELD_TO_COMPARE = "FIELD_NAME"        # Field to check for duplicates
+
+##################################################################################################
+#                               LOAD TARGET COLLECTION FIELD VALUES                              #
+#                                                                                                #
+# Loads all unique values of the specified field from the target collection into a set for       #
+# fast lookup during the duplicate checking process.                                             #
+#                                                                                                #
+# Retrieves documents in batches to avoid memory issues when dealing with large datasets.        #
+#                                                                                                #
+# :return: A set containing all unique field values from the target collection.                  #
+##################################################################################################
+
+def load_target_field_values():
+    target_values = set()
+    with MongoDBConnection(database_name=TARGET_DATABASE, collection_name=TARGET_COLLECTION) as target_conn:
+        cursor = target_conn.collection.find({}, {FIELD_TO_COMPARE: 1}) # Fetch only the FIELD_TO_COMPARE field
+
+        batch = []
+        for doc in cursor:
+            if FIELD_TO_COMPARE in doc:
+                batch.append(doc[FIELD_TO_COMPARE])
+
+            if len(batch) >= BATCH_SIZE:
+                target_values.update(batch)
+                batch = []  # Clear batch for next iteration
+
+        if batch:
+            target_values.update(batch) # Add remaining documents
+
+    return target_values
+
+##################################################################################################
+#                                     PROCESS DUPLICATES                                         #
+#                                                                                                #
+# Marks documents in the source collection as duplicated if their field value exists in          #
+# the preloaded set of field values from the target collection.                                  #
+#                                                                                                #
+# This function processes each batch of documents and updates them by adding a field             #
+# "duplicated": true in the source collection if a duplicate is found.                           #
+#                                                                                                #
+# :param batch: A list of documents from the source collection.                                  #
+# :param source_conn: MongoDB connection instance for the source collection.                     #
+# :param target_values: A set containing all unique field values from the target collection.     #
+##################################################################################################
+
+def process_duplicates(batch, source_conn, target_values):
+    for doc in batch:
+        if FIELD_TO_COMPARE in doc and doc[FIELD_TO_COMPARE] in target_values:
+            source_conn.collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"duplicated": True}}
+            )
+
+##################################################################################################
+#                                        CHUNK CURSOR                                            #
+#                                                                                                #
+# Splits a MongoDB cursor into smaller batches for efficient processing.                         #
+#                                                                                                #
+# Instead of loading all documents at once into memory, this function yields                     #
+# batches of documents incrementally, reducing memory usage and improving performance.           #
+#                                                                                                #
+# :param cursor: MongoDB cursor to iterate through documents.                                    #
+# :param batch_size: The number of documents per batch.                                          #
+# :yield: Yields batches of documents as lists.                                                  #
+##################################################################################################
+
+def chunk_cursor(cursor, batch_size):
+    batch = []
+    for doc in cursor:
+        batch.append(doc)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+##################################################################################################
+#                                         MAIN SCRIPT                                            #
+#                                                                                                #
+# Orchestrates the process of identifying and marking documents as duplicated based on           #
+# the comparison of a specific field between two MongoDB collections.                            #
+#                                                                                                #
+# Steps:                                                                                         #
+# - Loads all field values from the target collection into memory for fast lookups.              #
+# - Connects to the source collection and retrieves documents to compare.                        #
+# - Uses multithreading to process documents in batches efficiently.                             #
+# - Updates source documents where a matching field value is found.                              #
+##################################################################################################
+
+if __name__ == "__main__":
+    try:
+        logger.info(f"🔍 Loading field values from '{TARGET_COLLECTION}' to check for duplicates...")
+        target_values = load_target_field_values()
+        logger.info(f"✅ Loaded {len(target_values)} unique field values from '{TARGET_COLLECTION}'.")
+
+        # Connect to MongoDB source collection
+        with MongoDBConnection(database_name=SOURCE_DATABASE, collection_name=SOURCE_COLLECTION) as source_conn:
+            cursor = source_conn.collection.find({}, {"_id": 1, FIELD_TO_COMPARE: 1})   # Fetch only necessary fields
+            total_docs = source_conn.collection.count_documents({})
+            logger.info(f"📄 Total documents found in '{SOURCE_COLLECTION}': {total_docs}")
+
+            with tqdm(total=total_docs, desc="Checking for duplicates") as pbar:
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    futures = [
+                        executor.submit(process_duplicates, batch, source_conn, target_values)
+                        for batch in chunk_cursor(cursor, BATCH_SIZE)
+                    ]
+                    for future in as_completed(futures):
+                        pbar.update(BATCH_SIZE)
+
+        logger.info(f"✅ Duplicate checking process completed successfully for '{SOURCE_COLLECTION}'.")
+
+    except Exception as e:
+        logger.error(f"❌ Error during processing: {e}")
+
+    finally:
+        logger.info("🔄 Process finished.")

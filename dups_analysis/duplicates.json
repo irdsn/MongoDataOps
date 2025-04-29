@@ -1,0 +1,18 @@
+{
+  "https://www.linkedin.com/in/john-doe": [
+    {
+      "$oid": "6640804b02dd5d812d886a53"
+    },
+    {
+      "$oid": "6640804b02dd5d812d886a55"
+    }
+  ],
+  "https://www.linkedin.com/in/jane-smith": [
+    {
+      "$oid": "6640804b02dd5d812d886a54"
+    },
+    {
+      "$oid": "6640804b02dd5d812d886a57"
+    }
+  ]
+}

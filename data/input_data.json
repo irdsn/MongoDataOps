@@ -1,0 +1,27 @@
+[
+  {
+    "_id": { "$oid": "6640804b02dd5d812d886a53" },
+    "url": "https://www.linkedin.com/in/john-doe",
+    "name": "John Doe"
+  },
+  {
+    "_id": { "$oid": "6640804b02dd5d812d886a54" },
+    "url": "https://www.linkedin.com/in/jane-smith",
+    "name": "Jane Smith"
+  },
+  {
+    "_id": { "$oid": "6640804b02dd5d812d886a55" },
+    "url": "https://www.linkedin.com/in/john-doe",
+    "name": "John Doe Duplicate"
+  },
+  {
+    "_id": { "$oid": "6640804b02dd5d812d886a56" },
+    "url": "https://www.linkedin.com/in/bob-marley",
+    "name": "Bob Marley"
+  },
+  {
+    "_id": { "$oid": "6640804b02dd5d812d886a57" },
+    "url": "https://www.linkedin.com/in/jane-smith",
+    "name": "Jane Smith Duplicate"
+  }
+]

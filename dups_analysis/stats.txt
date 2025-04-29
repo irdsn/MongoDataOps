@@ -1,0 +1,8 @@
+Total documents: 5
+Unique url values: 3
+Duplicated url entries: 2
+Total duplicated IDs: 4
+Total IDs to delete: 2
+Top 10 most duplicated values:
+  https://www.linkedin.com/in/john-doe (2 times)
+  https://www.linkedin.com/in/jane-smith (2 times)
