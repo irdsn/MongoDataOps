@@ -10,7 +10,7 @@ A MongoDB data operations toolkit, born from real-world experience as a Data Eng
 ## Author
 
 Íñigo Rodríguez Sánchez  
-Data Engineering Lead & Artificial Intelligence Engineer
+Data & Artificial Intelligence Engineer
 
 ---
 
