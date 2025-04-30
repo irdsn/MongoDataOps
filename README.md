@@ -1,15 +1,15 @@
+# MongoDataOps
+
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
 ![Last Updated](https://img.shields.io/badge/Last%20Updated-April%2029,%202025-green)
 
-# MongoDataOps
-
-> A MongoDB data operations toolkit, born from real-world experience as a Data Engineering Lead & Artificial Intelligence Engineer.
+A MongoDB data operations toolkit, born from real-world experience as a Data Engineering Lead & Artificial Intelligence Engineer.
 
 ---
 
 ## 👤 Author
 
-Built with passion by Íñigo Rodríguez Sánchez,  
+Built with passion by Íñigo Rodríguez Sánchez  
 Data Engineering Lead & Artificial Intelligence Engineer
 
 ---
