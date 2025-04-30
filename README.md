@@ -1,4 +1,4 @@
-# MongoDataOps
+# MongoDataOps: A clean and modular toolkit for MongoDB data workflows
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
 ![Last Updated](https://img.shields.io/badge/Last%20Updated-April%2029,%202025-green)
@@ -32,8 +32,8 @@ Data & Artificial Intelligence Engineer
 
 **MongoDataOps** is a collection of Python scripts designed to automate and streamline frequent data management tasks in MongoDB collections.  
 
-This repository is the result of valuable knowledge and practices acquired during my professional journey.  
-It originated from a position I greatly enjoyed, where I grew extensively both technically and personally.  
+This repository is the result of valuable knowledge and practices acquired during my professional journey. It originated from a position I greatly enjoyed, where I grew extensively both technically and personally.  
+
 The purpose of this repository is to preserve and share that learning, ensuring that the lessons and best practices are never lost.
 
 MongoDataOps aims to provide:
