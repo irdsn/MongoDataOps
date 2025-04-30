@@ -7,14 +7,14 @@ A MongoDB data operations toolkit, born from real-world experience as a Data Eng
 
 ---
 
-## 👤 Author
+## Author
 
-Built with passion by Íñigo Rodríguez Sánchez  
+Íñigo Rodríguez Sánchez  
 Data Engineering Lead & Artificial Intelligence Engineer
 
 ---
 
-## 📚 Table of Contents
+## Table of Contents
 
 - [Introduction](#introduction)
 - [Key Features](#key-features)
@@ -28,7 +28,7 @@ Data Engineering Lead & Artificial Intelligence Engineer
 
 ---
 
-## 📚 Introduction
+## Introduction
 
 **MongoDataOps** is a collection of Python scripts designed to automate and streamline frequent data management tasks in MongoDB collections.  
 
@@ -43,7 +43,7 @@ MongoDataOps aims to provide:
 
 ---
 
-## 🔄 Key Features
+## Key Features
 
 - Batch processing and multithreading for speed and scalability
 - Controlled document updates, moves, and deletions
@@ -53,21 +53,23 @@ MongoDataOps aims to provide:
 
 ---
 
-## 🔹 Project Structure
+## Project Structure
 
 ```bash
 MongoDataOps/
-├── data/                     # Input data files (e.g., ids.txt, input_data.json)
+├── data/                      # Input data files (e.g., ids.txt, input_data.json)
 ├── dups_analysis/             # Output folder for duplicate analysis results
 ├── scripts/                   # Main Python scripts (automation tasks)
 ├── utils/                     # Reusable utilities (database connections, logging)
-├── README.md                  # This documentation file
-└── requirements.txt           # Python dependencies list
+├── requirements.txt           # Python dependencies list
+├── .env.example               # Template for environment variables
+├── .gitignore                 # Files and folders to ignore in Git
+└── README.md                  # This documentation file (you are here)
 ```
 
 ---
 
-## 🔍 Script Overview
+## Script Overview
 
 | Script | Purpose |
 |:---|:---|
@@ -89,14 +91,14 @@ MongoDataOps/
 
 ---
 
-## 📁 Utilities
+## Utilities
 
 - `utils/database_connections.py` : Secure, reusable MongoDB connection class.
 - `utils/logs_config.py` : Centralized logging configuration with info/debug/error levels.
 
 ---
 
-## 🚀 Installation
+## Installation
 
 1. Clone this repository:
 ```bash
@@ -117,7 +119,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🔧 Usage
+## Usage
 
 Each script is standalone and configurable via the constants section at the top of the script.
 
@@ -134,7 +136,7 @@ Before running a script:
 
 ---
 
-## 🔹 Important Notes
+## Important Notes
 
 - MongoDB credentials are handled internally via `MongoDBConnection` class (adjust as needed).
 - Some operations are destructive (e.g., moving or deleting documents). Use with caution.
@@ -144,7 +146,7 @@ Before running a script:
 
 ---
 
-## 🚀 Final Words
+## Final Words
 
 MongoDataOps isn't just a set of scripts. It's a toolkit born from real data challenges.  
 Thank you for checking it out! Hope it saves you time, simplifies your workflows, and sparks new ideas.
