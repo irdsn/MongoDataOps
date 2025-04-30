@@ -149,5 +149,7 @@ Before running a script:
 ## Final Words
 
 MongoDataOps isn't just a set of scripts. It's a toolkit born from real data challenges.  
-Thank you for checking it out! Hope it saves you time, simplifies your workflows, and sparks new ideas.
+Thank you for checking it out! Hope it saves you time, simplifies your workflows, and sparks new ideas.  
+It is an evolving tool, open for experimentation, extension, or integration into larger pipelines.
 
+**If you’ve found this project useful or inspiring — feel free to build on it, break it, or just drop a star ⭐.**
