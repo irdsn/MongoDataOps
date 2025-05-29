@@ -1,8 +1,9 @@
 # MongoDataOps: A clean and modular toolkit for MongoDB data workflows
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
+![Database](https://img.shields.io/badge/Database-MongoDB-green)
+![Task](https://img.shields.io/badge/Task-Data_Engineering-orange)
 ![Last Updated](https://img.shields.io/badge/Last%20Updated-May%202025-brightgreen)
-
 
 A MongoDB data operations toolkit, born from real-world experience as a Data Engineering Lead & Artificial Intelligence Engineer.
 
