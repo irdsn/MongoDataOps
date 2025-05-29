@@ -24,26 +24,31 @@ from utils.logs_config import logger                                # Logs and e
 from bson.objectid import ObjectId                                  # MongoDB ObjectId
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
-SOURCE_DATABASE = "SOURCE_DATABASE"         # Source database name
-SOURCE_COLLECTION = "SOURCE_COLLECTION"     # Source collection name
+SOURCE_DATABASE = "SOURCE_DATABASE"     # Source database name
+SOURCE_COLLECTION = "SOURCE_COLLECTION" # Source collection name
 
-TXT_FILE_PATH = "data/ids.txt"  # Path to the text file with _id (Mongo Primary Key) list
+TXT_FILE_PATH = "inputs/ids.txt"  # Path to the text file with _id (Mongo Primary Key) list
 
 ##################################################################################################
-#                                     DELETE DOCUMENTS                                           #
-#                                                                                                #
-# Deletes documents from a MongoDB collection based on a list of `_id` values provided in a      #
-# text file.                                                                                     #
-#                                                                                                #
-# :param file_path: Path to the text file containing `_id` values                                #
-# :param db_name: Name of the MongoDB database                                                   #
-# :param collection_name: Name of the MongoDB collection                                         #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def delete_documents_by_ids(file_path, db_name, collection_name):
+    """
+    Deletes documents from a MongoDB collection based on `_id` values listed in a text file.
+
+    Each line in the file must contain a valid MongoDB ObjectId. All matching documents
+    in the specified collection are deleted in bulk using `$in`.
+
+    Args:
+        file_path (str): Path to the text file containing one `_id` per line.
+        db_name (str): Name of the MongoDB database.
+        collection_name (str): Name of the collection from which documents will be deleted.
+    """
+
     try:
         # Read `_id` values from the file
         with open(file_path, 'r') as file:
@@ -59,10 +64,7 @@ def delete_documents_by_ids(file_path, db_name, collection_name):
         logger.error(f"❌ Error during deletion: {e}")
 
 ##################################################################################################
-#                                       MAIN SCRIPT                                              #
-#                                                                                                #
-# Entry point for the script. Calls the `delete_documents_by_ids` function to process the        #
-# specified text file and delete documents from the target MongoDB collection.                   #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

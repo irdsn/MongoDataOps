@@ -20,7 +20,7 @@
 ##################################################################################################
 
 ##################################################################################################
-#                                           IMPORTS                                              #
+#                                            IMPORTS                                             #
 ##################################################################################################
 
 from utils.database_connections import MongoDBConnection            # Database connection
@@ -31,7 +31,7 @@ from pymongo import UpdateOne                                       # Bulk opera
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -47,17 +47,25 @@ QUERY = {"FIELD_NAME": {"$exists": True}}
 FIELDS_TO_REMOVE = ["FIELD_NAME"]
 #FIELDS_TO_REMOVE = ["FIELD_NAME_1", "FIELD_NAME_2", "FIELD_NAME_3"]
 
-
 ##################################################################################################
-#                                     REMOVE SPECIFIED FIELD                                     #
-#                                                                                                #
-# Removes the specified field from all documents in the batch that match the query.              #
-#                                                                                                #
-# :param batch: List of documents to process                                                     #
-# :param collection: MongoDB collection object                                                   #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def remove_fields(batch, collection):
+    """
+    Removes specified fields from a list of documents in a MongoDB collection.
+
+    Executes a bulk update operation that unsets (deletes) the fields defined
+    in the global `FIELDS_TO_REMOVE` list for each document in the batch.
+
+    Args:
+        batch (list): List of MongoDB documents to process.
+        collection: pymongo Collection object where updates will be applied.
+
+    Returns:
+        int: Number of documents updated in the current batch.
+    """
+
     try:
         unset_fields = {field: "" for field in FIELDS_TO_REMOVE}
         bulk_ops = [
@@ -71,17 +79,20 @@ def remove_fields(batch, collection):
         print(f"❌ Error in batch: {e}")
         return 0
 
-##################################################################################################
-#                                        CHUNK CURSOR                                            #
-#                                                                                                #
-# Breaks a MongoDB cursor into smaller batches for efficient processing.                         #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents                                     #
-# :param batch_size: The size of each batch to process                                           #
-# :yield: Yields batches of documents as lists                                                   #
-##################################################################################################
-
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller batches for memory-efficient processing.
+
+    Iterates over the cursor and yields lists of documents in fixed-size chunks.
+
+    Args:
+        cursor: MongoDB cursor to iterate through.
+        batch_size (int): Number of documents per batch.
+
+    Yields:
+        list: A batch of MongoDB documents.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -92,10 +103,7 @@ def chunk_cursor(cursor, batch_size):
         yield batch
 
 ##################################################################################################
-#                                        MAIN SCRIPT                                             #
-#                                                                                                #
-# Connects to the target MongoDB collection, retrieves documents in batches,                     #
-# and removes the specified field from all matching documents.                                   #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

@@ -27,35 +27,61 @@ from bson.objectid import ObjectId                                  # MongoDB Ob
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
 MAX_WORKERS = cpu_count()   # Number of parallel threads
 
-SOURCE_DATABASE = "SOURCE_DATABASE"  # Source database name
-TARGET_DATABASE = "TARGET_DATABASE"  # Target database name
+SOURCE_DATABASE = "SOURCE_DATABASE" # Source database name
+TARGET_DATABASE = "TARGET_DATABASE" # Target database name
 
-SOURCE_COLLECTION = "SOURCE_COLLECTION"   # Source collection name
-TARGET_COLLECTION = "TARGET_COLLECTION"  # Target collection name
+SOURCE_COLLECTION = "SOURCE_COLLECTION" # Source collection name
+TARGET_COLLECTION = "TARGET_COLLECTION" # Target collection name
 
-FIELD_TO_COPY = "FIELD_NAME"  # Replace with the field to be copied
+FIELD_TO_COPY = "FIELD_NAME"    # Replace with the field to be copied
 
-TXT_FILE_PATH = "data/ids.txt"  # Path to the text file with _id (Mongo Primary Key) list
+TXT_FILE_PATH = "inputs/ids.txt"  # Path to the text file with _id (Mongo Primary Key) list
 
 ##################################################################################################
-#                                 READ IDS FROM FILE                                             #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def read_ids_from_file(file_path):
+    """
+    Reads MongoDB document `_id` values from a text file.
+
+    Each line in the file is expected to contain a single ObjectId string.
+    Converts the string into a valid `ObjectId` for MongoDB queries.
+
+    Args:
+        file_path (str): Path to the text file containing `_id` values.
+
+    Returns:
+        List[ObjectId]: List of ObjectIds extracted from the file.
+    """
+
     with open(file_path, 'r') as file:
         return [ObjectId(line.strip()) for line in file if line.strip()]
 
-##################################################################################################
-#                                COPY FIELD IN PARALLEL                                          #
-##################################################################################################
-
 def copy_field_in_parallel(batch, source_conn, target_conn):
+    """
+    Copies a specified field from source to target documents for a given batch of `_id`s.
+
+    For each document ID in the batch:
+    - Fetches the field value from the source collection.
+    - Updates or inserts the field into the corresponding document in the target collection.
+    - Respects the existing field order and does not insert new documents unless `upsert=True` is enabled.
+
+    Args:
+        batch (list): List of ObjectIds to process.
+        source_conn: MongoDBConnection instance for the source collection.
+        target_conn: MongoDBConnection instance for the target collection.
+
+    Returns:
+        int: Number of documents successfully updated.
+    """
+
     updated_count = 0
     for _id in batch:
         try:
@@ -74,7 +100,7 @@ def copy_field_in_parallel(batch, source_conn, target_conn):
     return updated_count
 
 ##################################################################################################
-#                                     MAIN SCRIPT                                                #
+#                                               MAIN                                             #
 ##################################################################################################
 
 try:

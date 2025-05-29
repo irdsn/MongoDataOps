@@ -33,13 +33,13 @@ from datetime import datetime                                       # Timestamp
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
 MAX_WORKERS = cpu_count()   # Number of parallel threads
 
-DATABASE_NAME = "DATABASE_NAME" # Source database
+DATABASE_NAME = "DATABASE_NAME"     # Source database
 COLLECTION_NAME = "COLLECTION_NAME" # Source collection
 
 # MongoDB query to select documents
@@ -51,15 +51,24 @@ FIELD_2 = ("FIELD_NAME_2", "FIELD_VALUE_2")
 FIELD_3 = ("timestamp", datetime.utcnow())
 
 ##################################################################################################
-#                                     ADD OR UPDATE FIELD                                        #
-#                                                                                                #
-# Adds or updates the specified field in all documents in the batch that match the query.        #
-#                                                                                                #
-# :param batch: List of documents to process                                                     #
-# :param collection: MongoDB collection object                                                   #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def process_batch(batch, collection):
+    """
+    Processes a batch of MongoDB documents by adding or updating predefined fields.
+
+    For each document in the batch, it creates a new version with added or modified fields,
+    then performs a bulk replacement in the collection using `$replaceRoot`.
+
+    Args:
+        batch (list): List of MongoDB documents to process.
+        collection: PyMongo collection object where documents reside.
+
+    Returns:
+        int: Number of successfully updated documents in the batch.
+    """
+
     try:
         bulk_ops = []
         for doc in batch:
@@ -79,17 +88,21 @@ def process_batch(batch, collection):
         print(f"❌ Error in batch: {e}")
         return 0
 
-##################################################################################################
-#                                    CHUNK CURSOR                                                #
-#                                                                                                #
-# Breaks a MongoDB cursor into smaller batches for efficient processing.                         #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents                                     #
-# :param batch_size: The size of each batch to process                                           #
-# :yield: Yields batches of documents as lists                                                   #
-##################################################################################################
-
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller batches for memory-efficient processing.
+
+    Iterates through the cursor and yields sublists of documents, each with a maximum
+    size defined by `batch_size`.
+
+    Args:
+        cursor: MongoDB cursor object.
+        batch_size (int): Number of documents per batch.
+
+    Yields:
+        list: A batch (sublist) of documents.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -100,10 +113,7 @@ def chunk_cursor(cursor, batch_size):
         yield batch
 
 ##################################################################################################
-#                                    MAIN SCRIPT                                                 #
-#                                                                                                #
-# Connects to the target MongoDB collection, retrieves documents in batches,                    #
-# and adds or updates the specified field in all matching documents.                            #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

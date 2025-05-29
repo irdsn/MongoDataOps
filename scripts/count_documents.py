@@ -7,7 +7,7 @@
 #                                                                                                #
 # Key Features:                                                                                  #
 # - Uses a streaming cursor with `_id` projection for better performance on large datasets.      #
-# - Only performs a read operation; no data is modified.                                         #
+# - Only performs a read operation; no inputs is modified.                                         #
 # - Logs the total number of matching documents.                                                 #
 # - Accepts a customizable MongoDB query.                                                        #
 ##################################################################################################
@@ -20,26 +20,34 @@ from utils.database_connections import MongoDBConnection            # Database c
 from utils.logs_config import logger                                # Logs and events
 
 ##################################################################################################
-#                                         QUERIES CONFIG                                         #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
-DATABASE_NAME = "DATABASE_NAME" # Source database
+DATABASE_NAME = "DATABASE_NAME"     # Source database
 COLLECTION_NAME = "COLLECTION_NAME" # Source collection
 
-QUERY = {"FIELD_NAME": { "$exists": True }}     # Query to filter documents
+QUERY = {"FIELD_NAME": { "$exists": True }} # Query to filter documents
 
 ##################################################################################################
-#                                      COUNT DOCUMENTS                                           #
-#                                                                                                #
-# Connects to MongoDB and counts the number of documents that match the specified query.         #
-#                                                                                                #
-# Features:                                                                                      #
-# - Uses MongoDBConnection for easy handling.                                                    #
-# - Allows filtering using a query.                                                              #
-# - Displays the total count of matching documents.                                              #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def count_documents():
+    """
+    Counts the number of documents in a MongoDB collection that match a custom query.
+
+    Uses a projection-based streaming cursor to efficiently count documents,
+    especially in large collections where `count_documents()` may time out.
+
+    Features:
+        - Uses `_id`-only projection for performance.
+        - Prints the total count of matching documents to the logs.
+        - Does not modify any inputs; read-only operation.
+
+    Raises:
+        Logs exceptions if a connection or query error occurs.
+    """
+
     try:
         # Connect to MongoDB collection
         with MongoDBConnection(database_name=DATABASE_NAME, collection_name=COLLECTION_NAME) as conn:
@@ -64,7 +72,7 @@ def count_documents():
 
 
 ##################################################################################################
-#                                         EXECUTION                                              #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

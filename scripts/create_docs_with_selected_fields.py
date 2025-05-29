@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed     # Multithrea
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -47,20 +47,24 @@ FIELDS_TO_KEEP = ["FIELD_NAME"]
 LIMIT = None  # Limit on the number of documents to create (None for no limit)
 
 ##################################################################################################
-#                                        CHUNK CURSOR                                            #
-#                                                                                                #
-# Efficiently splits a MongoDB cursor into smaller batches to optimize processing.               #
-#                                                                                                #
-# This function helps to process large datasets by breaking them into manageable chunks.         #
-# Instead of loading all documents into memory at once, it yields smaller lists of documents,    #
-# reducing memory usage and improving performance.                                               #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents.                                    #
-# :param batch_size: The number of documents per batch to process at a time.                    #
-# :yield: Yields batches of documents as lists, ensuring efficient memory usage.                 #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller batches for efficient processing.
+
+    Iterates through the cursor and yields batches of documents as lists.
+    This avoids loading the entire dataset into memory.
+
+    Args:
+        cursor: MongoDB cursor object.
+        batch_size (int): Number of documents per batch.
+
+    Yields:
+        list: A batch (sublist) of documents.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -70,33 +74,34 @@ def chunk_cursor(cursor, batch_size):
     if batch:
         yield batch
 
-##################################################################################################
-#                               FILTER DOCUMENT FIELDS                                           #
-#                                                                                                #
-# Extracts only fields listed in FIELDS_TO_KEEP from a MongoDB document.                         #
-# Ensures the document structure is controlled and reduced.                                      #
-#                                                                                                #
-# :param doc: MongoDB document from the source collection.                                       #
-# :return: A filtered dictionary with only desired fields.                                       #
-##################################################################################################
-
 def filter_document_fields(doc):
+    """
+    Filters a MongoDB document to retain only the fields defined in FIELDS_TO_KEEP.
+
+    Args:
+        doc (dict): MongoDB document from the source collection.
+
+    Returns:
+        dict: Filtered document containing only desired fields.
+    """
+
     filtered_doc = {key: doc[key] for key in FIELDS_TO_KEEP if key in doc}
     return filtered_doc
 
-##################################################################################################
-#                        PROCESS BATCH - INSERT MISSING DOCUMENTS                                #
-#                                                                                                #
-# Inserts only new documents (by `_id`) into the target collection.                              #
-# Applies FIELDS_TO_KEEP filtering to control what is inserted.                                  #
-# Skips documents already present to avoid overwriting.                                          #
-#                                                                                                #
-# :param batch: List of MongoDB documents to process.                                            #
-# :param source_conn: MongoDBConnection object for the source.                                   #
-# :param target_conn: MongoDBConnection object for the target.                                   #
-##################################################################################################
-
 def process_batch_insert_missing(batch, source_conn, target_conn):
+    """
+    Inserts documents into the target collection only if they do not already exist.
+
+    - Checks for existing `_id`s in the target collection.
+    - Filters each document to include only selected fields.
+    - Inserts only new documents, avoiding overwrites.
+
+    Args:
+        batch (list): List of documents to process.
+        source_conn: MongoDBConnection instance for the source collection.
+        target_conn: MongoDBConnection instance for the target collection.
+    """
+
     try:
         # Get the existing _id in the destination collection
         existing_ids = set(target_conn.collection.distinct("_id", {"_id": {"$in": [doc["_id"] for doc in batch]}}))
@@ -114,10 +119,7 @@ def process_batch_insert_missing(batch, source_conn, target_conn):
         logger.error(f"Failed to process batch: {e}")
 
 ##################################################################################################
-#                                    MAIN SCRIPT                                                 #
-#                                                                                                #
-# Connects to MongoDB collections, retrieves documents in batches, and processes them based on   #
-# the configuration.                                                                             #
+#                                               MAIN                                             #
 ##################################################################################################
 
 try:

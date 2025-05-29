@@ -10,7 +10,7 @@
 # Key Features:                                                                                  #
 # - Uses batch processing to improve efficiency and reduce memory usage.                         #
 # - Matches documents by `_id` between source and target collections.                            #
-# - Updates only selected fields while preserving other existing data in the target.             #
+# - Updates only selected fields while preserving other existing inputs in the target.             #
 # - Utilizes multithreading to enhance performance.                                              #
 #                                                                                                #
 # Configuration Variables:                                                                       #
@@ -32,7 +32,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed     # Multithrea
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -52,20 +52,21 @@ FIELDS_TO_COPY = ["FIELD_NAME_1", "FIELD_NAME_2"]
 LIMIT = None  # Limit on the number of documents to transfer (None for no limit)
 
 ##################################################################################################
-#                                        CHUNK CURSOR                                            #
-#                                                                                                #
-# Efficiently splits a MongoDB cursor into smaller batches to optimize processing.               #
-#                                                                                                #
-# This function helps to process large datasets by breaking them into manageable chunks.         #
-# Instead of loading all documents into memory at once, it yields smaller lists of documents,    #
-# reducing memory usage and improving performance.                                               #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents.                                    #
-# :param batch_size: The number of documents per batch to process at a time.                     #
-# :yield: Yields batches of documents as lists, ensuring efficient memory usage.                 #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller batches for memory-efficient processing.
+
+    Args:
+        cursor (pymongo.cursor.Cursor): MongoDB cursor with documents to process.
+        batch_size (int): Number of documents per batch.
+
+    Yields:
+        list[dict]: A batch (list) of documents.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -75,37 +76,36 @@ def chunk_cursor(cursor, batch_size):
     if batch:
         yield batch
 
-##################################################################################################
-#                               FILTER DOCUMENT FIELDS                                           #
-#                                                                                                #
-# Extracts only the specified fields from a MongoDB document.                                    #
-#                                                                                                #
-# This function ensures that only relevant fields are copied from the source collection.         #
-# It does not modify the original document but returns a filtered dictionary containing          #
-# only the fields defined in `FIELDS_TO_COPY`.                                                   #
-#                                                                                                #
-# :param doc: The original MongoDB document from the source collection.                          #
-# :return: A new dictionary with only the fields specified in `FIELDS_TO_COPY`.                  #
-##################################################################################################
-
 def filter_document_fields(doc):
+    """
+    Extracts only the specified fields from a document.
+
+    This function filters a MongoDB document and returns a new dictionary containing
+    only the keys defined in `FIELDS_TO_COPY`.
+
+    Args:
+        doc (dict): The original MongoDB document.
+
+    Returns:
+        dict: A filtered dictionary containing only relevant fields.
+    """
+
     return {key: doc[key] for key in FIELDS_TO_COPY if key in doc}
 
-##################################################################################################
-#                           PROCESS BATCH - UPDATE MATCHING IDs                                  #
-#                                                                                                #
-# Updates existing documents in the target collection based on `_id` matches.                    #
-#                                                                                                #
-# This function scans a batch of documents from the source collection, extracts only the         #
-# specified fields, and updates matching documents in the target collection where `_id`          #
-# already exists. It ensures that existing documents are updated without modifying other fields. #
-#                                                                                                #
-# :param batch: A list of documents from the source collection.                                  #
-# :param source_conn: MongoDB connection instance for the source collection.                     #
-# :param target_conn: MongoDB connection instance for the target collection.                     #
-##################################################################################################
-
 def process_batch_update_matching(batch, source_conn, target_conn):
+    """
+    Updates existing documents in the target collection by matching `_id` values.
+
+    For each document in the batch that already exists in the target collection,
+    this function updates only the fields defined in `FIELDS_TO_COPY`, preserving
+    all other existing inputs.
+
+    Args:
+        batch (list[dict]): List of source documents to use for updates.
+        source_conn (MongoDBConnection): Connection to the source MongoDB collection.
+        target_conn (MongoDBConnection): Connection to the target MongoDB collection.
+    """
+
     try:
         # Get the existing _id in the destination collection
         cursor = target_conn.collection.find(
@@ -126,15 +126,7 @@ def process_batch_update_matching(batch, source_conn, target_conn):
         logger.error(f"Failed to process batch: {e}")
 
 ##################################################################################################
-#                                        MAIN SCRIPT                                             #
-#                                                                                                #
-# Orchestrates the process of transferring and updating documents in MongoDB.                    #
-#                                                                                                #
-# - Establishes connections to the source and target collections.                                #
-# - Retrieves documents based on the specified query.                                            #
-# - Uses multithreading for parallel processing to improve performance.                          #
-# - Processes documents in batches, updating only those with a matching `_id` in the target.     #
-# - Logs progress and handles exceptions to ensure reliable execution.                           #
+#                                               MAIN                                             #
 ##################################################################################################
 
 try:

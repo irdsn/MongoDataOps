@@ -26,7 +26,7 @@ from bson.objectid import ObjectId                                  # MongoDB Ob
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -40,33 +40,49 @@ TARGET_COLLECTION = "TARGET_COLLECTION"     # Target collection name
 
 MOVE_MODE = False  # If True, documents will be deleted from source after copying (MOVED). If False, they will be preserved (COPIED).
 
-TXT_FILE_PATH = "data/ids.txt"  # Path to the text file with _id (Mongo Primary Key) list
+TXT_FILE_PATH = "inputs/ids.txt"  # Path to the text file with _id (Mongo Primary Key) list
 
 ##################################################################################################
-#                                 READ IDS FROM FILE                                             #
-#                                                                                                #
-# Reads a list of ObjectIds from a text file.                                                    #
-#                                                                                                #
-# :param file_path: Path to the text file.                                                       #
-# :return: List of ObjectIds.                                                                    #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def read_ids_from_file(file_path):
+    """
+    Reads MongoDB ObjectId values from a text file, one per line.
+
+    Each line of the file is expected to contain a valid hexadecimal `_id`.
+    Converts each line into a BSON `ObjectId` instance for later use in MongoDB queries.
+
+    Args:
+        file_path (str): Path to the text file containing `_id` values.
+
+    Returns:
+        list[ObjectId]: A list of ObjectId instances extracted from the file.
+    """
+
     with open(file_path, 'r') as file:
         return [ObjectId(line.strip()) for line in file if line.strip()]
 
-##################################################################################################
-#                                MOVE DOCUMENTS IN PARALLEL                                      #
-#                                                                                                #
-# Moves a batch of documents from source to target collection.                                   #
-# Deletes the document from the source collection after successful insertion into the target.    #
-#                                                                                                #
-# :param batch: List of ObjectIds to move.                                                       #
-# :param source_conn: MongoDB connection to source collection.                                   #
-# :param target_conn: MongoDB connection to target collection.                                   #
-##################################################################################################
-
 def move_documents_in_parallel(batch, source_conn, target_conn):
+    """
+    Transfers a batch of documents from the source collection to the target collection.
+
+    - Retrieves documents by `_id` from the source collection.
+    - Inserts them into the target collection.
+    - Deletes them from the source collection if `MOVE_MODE` is enabled.
+    - Logs each successful transfer operation.
+
+    This function is optimized to be executed in parallel using multithreading.
+
+    Args:
+        batch (list): List of ObjectIds representing the documents to transfer.
+        source_conn (MongoDBConnection): MongoDB connection to the source collection.
+        target_conn (MongoDBConnection): MongoDB connection to the target collection.
+
+    Returns:
+        int: Number of documents successfully transferred.
+    """
+
     moved_count = 0
     for _id in batch:
         try:
@@ -90,10 +106,7 @@ def move_documents_in_parallel(batch, source_conn, target_conn):
     return moved_count
 
 ##################################################################################################
-#                                     MAIN SCRIPT                                                #
-#                                                                                                #
-# Connects to MongoDB collections, reads a list of IDs, processes them in parallel batches,      #
-# and moves documents from the source collection to the target collection.                      #
+#                                               MAIN                                             #
 ##################################################################################################
 
 try:

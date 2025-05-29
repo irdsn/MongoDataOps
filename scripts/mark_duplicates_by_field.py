@@ -33,7 +33,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed     # Multithrea
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -45,20 +45,23 @@ SOURCE_COLLECTION = "SOURCE_COLLECTION"     # Source collection name
 TARGET_DATABASE = "TARGET_DATABASE"         # Target database name
 TARGET_COLLECTION = "TARGET_COLLECTION"     # Target collection name
 
-FIELD_TO_COMPARE = "FIELD_NAME"        # Field to check for duplicates
+FIELD_TO_COMPARE = "FIELD_NAME"             # Field to check for duplicates
 
 ##################################################################################################
-#                               LOAD TARGET COLLECTION FIELD VALUES                              #
-#                                                                                                #
-# Loads all unique values of the specified field from the target collection into a set for       #
-# fast lookup during the duplicate checking process.                                             #
-#                                                                                                #
-# Retrieves documents in batches to avoid memory issues when dealing with large datasets.        #
-#                                                                                                #
-# :return: A set containing all unique field values from the target collection.                  #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def load_target_field_values():
+    """
+    Loads all unique values of the comparison field from the target MongoDB collection.
+
+    Retrieves the field values in batches to avoid memory issues and stores them in a set
+    for fast lookup during duplicate detection in the source collection.
+
+    Returns:
+        set: A set containing all unique values of the specified field from the target collection.
+    """
+
     target_values = set()
     with MongoDBConnection(database_name=TARGET_DATABASE, collection_name=TARGET_COLLECTION) as target_conn:
         cursor = target_conn.collection.find({}, {FIELD_TO_COMPARE: 1}) # Fetch only the FIELD_TO_COMPARE field
@@ -77,21 +80,19 @@ def load_target_field_values():
 
     return target_values
 
-##################################################################################################
-#                                     PROCESS DUPLICATES                                         #
-#                                                                                                #
-# Marks documents in the source collection as duplicated if their field value exists in          #
-# the preloaded set of field values from the target collection.                                  #
-#                                                                                                #
-# This function processes each batch of documents and updates them by adding a field             #
-# "duplicated": true in the source collection if a duplicate is found.                           #
-#                                                                                                #
-# :param batch: A list of documents from the source collection.                                  #
-# :param source_conn: MongoDB connection instance for the source collection.                     #
-# :param target_values: A set containing all unique field values from the target collection.     #
-##################################################################################################
-
 def process_duplicates(batch, source_conn, target_values):
+    """
+    Marks documents in the source collection as duplicated based on field value comparison.
+
+    If a document's comparison field value is found in the target values set,
+    it is updated with `"duplicated": true`.
+
+    Args:
+        batch (list): List of documents from the source collection.
+        source_conn: MongoDBConnection instance for the source collection.
+        target_values (set): Set of field values from the target collection.
+    """
+
     for doc in batch:
         if FIELD_TO_COMPARE in doc and doc[FIELD_TO_COMPARE] in target_values:
             source_conn.collection.update_one(
@@ -99,20 +100,20 @@ def process_duplicates(batch, source_conn, target_values):
                 {"$set": {"duplicated": True}}
             )
 
-##################################################################################################
-#                                        CHUNK CURSOR                                            #
-#                                                                                                #
-# Splits a MongoDB cursor into smaller batches for efficient processing.                         #
-#                                                                                                #
-# Instead of loading all documents at once into memory, this function yields                     #
-# batches of documents incrementally, reducing memory usage and improving performance.           #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents.                                    #
-# :param batch_size: The number of documents per batch.                                          #
-# :yield: Yields batches of documents as lists.                                                  #
-##################################################################################################
-
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller batches for memory-efficient processing.
+
+    Iterates over the cursor and yields documents in fixed-size batches.
+
+    Args:
+        cursor: MongoDB cursor to iterate over.
+        batch_size (int): Number of documents per batch.
+
+    Yields:
+        list: A batch of documents.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -123,16 +124,7 @@ def chunk_cursor(cursor, batch_size):
         yield batch
 
 ##################################################################################################
-#                                         MAIN SCRIPT                                            #
-#                                                                                                #
-# Orchestrates the process of identifying and marking documents as duplicated based on           #
-# the comparison of a specific field between two MongoDB collections.                            #
-#                                                                                                #
-# Steps:                                                                                         #
-# - Loads all field values from the target collection into memory for fast lookups.              #
-# - Connects to the source collection and retrieves documents to compare.                        #
-# - Uses multithreading to process documents in batches efficiently.                             #
-# - Updates source documents where a matching field value is found.                              #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

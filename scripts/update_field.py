@@ -21,13 +21,13 @@ from datetime import datetime                                       # Timestamp
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                         CONFIGURATION                                          #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
 MAX_WORKERS = cpu_count()   # Number of parallel threads
 
-DATABASE_NAME = "DATABASE_NAME" # Source database
+DATABASE_NAME = "DATABASE_NAME"     # Source database
 COLLECTION_NAME = "COLLECTION_NAME" # Source collection
 
 # Query to find documents with the field to be modified/updated
@@ -41,10 +41,24 @@ UPDATED_VALUE = "FIELD_VALUE_NEW"
 TIMESTAMP = "timestamp"
 
 ##################################################################################################
-#                                         PROCESS BATCH                                          #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def process_batch(batch_ids, collection):
+    """
+    Processes a batch of document IDs and updates a specified field in each document.
+
+    The update includes setting a new value for the configured field. Optionally, a timestamp
+    can be added for tracking updates.
+
+    Args:
+        batch_ids (list[ObjectId]): List of document `_id` values to update.
+        collection (pymongo.collection.Collection): The MongoDB collection where updates will be applied.
+
+    Returns:
+        int: The number of documents successfully processed in the batch.
+    """
+
     try:
         bulk_ops = [
             UpdateOne(
@@ -62,11 +76,21 @@ def process_batch(batch_ids, collection):
         logger.error(f"❌ Error in batch: {e}")
         return 0
 
-##################################################################################################
-#                                          UPDATE FIELD                                          #
-##################################################################################################
-
 def update_field(collection):
+    """
+    Orchestrates the update operation by retrieving documents that match the specified query
+    and updating a target field in parallel using batch processing.
+
+    Steps:
+    - Retrieves all matching document `_id`s.
+    - Splits them into batches for memory efficiency.
+    - Executes updates in parallel threads using a thread pool.
+    - Tracks progress via a progress bar.
+
+    Args:
+        collection (pymongo.collection.Collection): The MongoDB collection to process.
+    """
+
     try:
         cursor = collection.find(QUERY, projection={"_id": 1}).batch_size(BATCH_SIZE)
         ids = [doc["_id"] for doc in cursor]
@@ -86,7 +110,7 @@ def update_field(collection):
         logger.error(f"❌ Error during update: {e}")
 
 ##################################################################################################
-#                                        MAIN SCRIPT                                             #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

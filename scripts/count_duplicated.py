@@ -20,10 +20,10 @@ from collections import defaultdict, Counter
 from utils.logs_config import logger  # Logs and events
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
-INPUT_FILE = "data/input_data.json"
+INPUT_FILE = "inputs/input_data.json"
 OUTPUT_DIR = "dups_analysis"
 
 FIELD_NAME = "url"   # Field to detect duplicates (e.g., "url")
@@ -34,12 +34,27 @@ DELETE_IDS_FILE = os.path.join(OUTPUT_DIR, "duplicated_ids_to_delete.txt")
 STATS_FILE = os.path.join(OUTPUT_DIR, "stats.txt")
 
 ##################################################################################################
-#                                    LOAD AND VALIDATE DATA                                      #
-#                                                                                                #
-# Loads the input JSON file and ensures it is a valid list of documents.                         #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def load_input_data(input_file):
+    """
+    Loads and validates a JSON file containing a list of documents.
+
+    The file is expected to contain a JSON array. If the structure is invalid,
+    an exception is raised. Logs the number of loaded documents.
+
+    Args:
+        input_file (str): Path to the input JSON file.
+
+    Returns:
+        list: List of loaded documents.
+
+    Raises:
+        ValueError: If the JSON content is not a list.
+        Exception: If loading or parsing the file fails.
+    """
+
     try:
         with open(input_file, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -48,16 +63,27 @@ def load_input_data(input_file):
         logger.info(f"✅ Loaded {len(data)} documents from {input_file}.")
         return data
     except Exception as e:
-        logger.error(f"❌ Failed to load input data: {e}")
+        logger.error(f"❌ Failed to load input inputs: {e}")
         raise
 
-##################################################################################################
-#                                   ANALYZE DUPLICATES                                           #
-#                                                                                                #
-# Builds an index of documents by the specified field and finds duplicates.                      #
-##################################################################################################
-
 def analyze_duplicates(data):
+    """
+    Analyzes the dataset to detect duplicate values based on a specified field.
+
+    Builds an index mapping each field value to a list of document IDs.
+    Extracts only those field values that have multiple associated IDs (duplicates).
+    All but the first ID in each duplicate group are marked for deletion.
+
+    Args:
+        data (list): List of documents to analyze.
+
+    Returns:
+        tuple:
+            - dict: Full index mapping field values to document IDs.
+            - dict: Duplicate field values and their associated IDs.
+            - list: IDs to delete (all except the first occurrence in each group).
+    """
+
     index = defaultdict(list)
     for doc in data:
         field_value = doc.get(FIELD_NAME)
@@ -70,13 +96,21 @@ def analyze_duplicates(data):
     logger.info(f"🔍 Found {len(duplicates)} duplicate groups.")
     return index, duplicates, delete_ids
 
-##################################################################################################
-#                                    WRITE OUTPUT FILES                                          #
-#                                                                                                #
-# Saves duplicates mapping, IDs to delete, and summary statistics into output files.             #
-##################################################################################################
-
 def write_outputs(index, duplicates, delete_ids, total_items):
+    """
+    Writes analysis results to output files: duplicate groups, IDs to delete, and stats.
+
+    - Saves `duplicates.json` with the grouped duplicate IDs.
+    - Saves `duplicated_ids_to_delete.txt` with one ID per line.
+    - Saves `stats.txt` with key statistics and most frequent duplicate values.
+
+    Args:
+        index (dict): Full mapping of field values to document IDs.
+        duplicates (dict): Mapping of duplicate field values to associated IDs.
+        delete_ids (list): List of IDs to delete (non-primary duplicates).
+        total_items (int): Total number of documents analyzed.
+    """
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # Duplicates JSON
@@ -109,9 +143,7 @@ def write_outputs(index, duplicates, delete_ids, total_items):
     logger.info(f"✅ Saved stats to {STATS_FILE}")
 
 ##################################################################################################
-#                                        MAIN SCRIPT                                             #
-#                                                                                                #
-# Coordinates loading, analyzing, and writing results for duplicates detection.                  #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

@@ -1,12 +1,11 @@
 ##################################################################################################
-#                                        OVERVIEW                                                #
+#                                        SCRIPT OVERVIEW                                         #
 #                                                                                                #
 # This module handles the MongoDB database connection setup and provides helper methods          #
 # for common operations such as finding and updating documents. It uses a context manager        #
 # pattern to ensure proper opening and closing of connections.                                   #
 # Configuration parameters are loaded securely from environment variables using dotenv.          #
 ##################################################################################################
-
 
 ##################################################################################################
 #                                            IMPORTS                                             #
@@ -16,14 +15,12 @@ import os
 import time
 
 from dotenv import load_dotenv
-from pymongo import MongoClient                         # MongoDB
-import urllib.parse                                     # MongoDB
-from utils.logs_config import logger                    # Logs and events
+from pymongo import MongoClient         # MongoDB
+import urllib.parse                     # MongoDB
+from utils.logs_config import logger    # Logs and events
 
 ##################################################################################################
-#                                       MONGODB CONNECTION                                       #
-#                                                                                                #
-# Class to manage Mongo database connection and query execution                                  #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 load_dotenv()  # Load environment variables from .env
@@ -39,7 +36,23 @@ ESCAPED_PWD = urllib.parse.quote_plus(MONGO_PASS)
 
 MONGO_URI = f"mongodb://{ESCAPED_USR}:{ESCAPED_PWD}@{MONGO_HOST}:{MONGO_PORT}/"
 
+##################################################################################################
+#                                        IMPLEMENTATION                                          #
+##################################################################################################
+
 class MongoDBConnection:
+    """
+    Context-managed MongoDB connection handler.
+
+    This class establishes a connection to a MongoDB instance using parameters loaded from
+    environment variables. It supports connection pooling, timeouts, and retry logic.
+
+    Attributes:
+        client (MongoClient): PyMongo client instance.
+        database (Database): Reference to the target MongoDB database.
+        collection (Collection): Reference to the target MongoDB collection.
+    """
+
     def __init__(self, database_name, collection_name):
         self.uri = MONGO_URI
         self.client = MongoClient(
@@ -64,6 +77,18 @@ class MongoDBConnection:
         logger.info("MongoDB connection closed.")
 
     def find_documents(self, filter_query, projection=None, limit_size=None):
+        """
+        Retrieves documents from the MongoDB collection based on a filter.
+
+        Args:
+            filter_query (dict): MongoDB filter query to match documents.
+            projection (dict, optional): Dictionary specifying fields to include or exclude.
+            limit_size (int, optional): Limits the number of returned documents.
+
+        Returns:
+            list[dict]: List of documents matching the filter.
+        """
+
         try:
             cursor = self.collection.find(filter_query, projection)
             # Applies the limit only if `limit` has an integer value
@@ -80,6 +105,19 @@ class MongoDBConnection:
             return []
 
     def update_document(self, filter_query, update_values, retries=3, delay=5):
+        """
+        Updates a single document in the MongoDB collection with retry logic.
+
+        Args:
+            filter_query (dict): Query to match the document to update.
+            update_values (dict): Dictionary of fields to update (`$set`).
+            retries (int): Number of retry attempts on failure.
+            delay (int): Seconds to wait between retry attempts.
+
+        Returns:
+            UpdateResult | None: The result of the update operation, or None if all retries fail.
+        """
+
         for attempt in range(retries):
             try:
                 # Performs update using `$set` to create or update the field

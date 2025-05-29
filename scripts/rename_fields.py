@@ -20,7 +20,7 @@
 ##################################################################################################
 
 ##################################################################################################
-#                                           IMPORTS                                              #
+#                                            IMPORTS                                             #
 ##################################################################################################
 
 from utils.database_connections import MongoDBConnection            # Database connection
@@ -31,7 +31,7 @@ from pymongo import UpdateOne                                       # Bulk opera
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                          CONSTANTS                                             #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -51,16 +51,21 @@ FIELDS_TO_RENAME = {
 }
 
 ##################################################################################################
-#                                     RENAME SPECIFIED FIELD                                     #
-#                                                                                                #
-# Renames the specified fields in all documents in the batch that match the query,               #
-# ensuring that THE RENAMED FIELDS REMAIN IN THEIR ORIGINAL POSITION WITHIN THE DOCUMENT.        #
-#                                                                                                #
-# :param batch: List of documents to process                                                     #
-# :param collection: MongoDB collection object                                                   #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def rename_fields(batch, collection):
+    """
+    Renames specified fields in each document of the batch while preserving field order.
+
+    This version ensures that renamed fields stay in their original position
+    within the document structure by reconstructing the document key-by-key.
+
+    Args:
+        batch (list): List of MongoDB documents to be updated.
+        collection: pymongo Collection object where updates are applied.
+    """
+
     try:
         bulk_ops = []
         for document in batch:
@@ -78,14 +83,18 @@ def rename_fields(batch, collection):
     except Exception as e:
         print(f"❌ Error in batch: {e}")
 
-##################################################################################################
-#                                     RENAME SPECIFIED FIELD                                     #
-#                                                                                                #
-# Renames the specified fields in all documents in the batch that match the query and MOVES      #
-# THE RENAMED FIELDS TO THE END.                                                                 #
-##################################################################################################
-
 def rename_fields_move_to_end(batch, collection):
+    """
+    Renames specified fields in each document of the batch and moves renamed fields to the end.
+
+    Fields not listed in `FIELDS_TO_RENAME` remain unchanged and in place.
+    Renamed fields are appended after all existing fields in the document.
+
+    Args:
+        batch (list): List of MongoDB documents to be updated.
+        collection: pymongo Collection object where updates are applied.
+    """
+
     try:
         bulk_ops = []
         for document in batch:
@@ -105,17 +114,18 @@ def rename_fields_move_to_end(batch, collection):
     except Exception as e:
         print(f"❌ Error in batch (move to end): {e}")
 
-##################################################################################################
-#                                        CHUNK CURSOR                                            #
-#                                                                                                #
-# Breaks a MongoDB cursor into smaller batches for efficient processing.                         #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents                                     #
-# :param batch_size: The size of each batch to process                                           #
-# :yield: Yields batches of documents as lists                                                   #
-##################################################################################################
-
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller, manageable batches for efficient memory usage.
+
+    Args:
+        cursor: MongoDB cursor to iterate through.
+        batch_size (int): Number of documents per batch.
+
+    Yields:
+        list: A batch of MongoDB documents.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -126,10 +136,7 @@ def chunk_cursor(cursor, batch_size):
         yield batch
 
 ##################################################################################################
-#                                        MAIN SCRIPT                                             #
-#                                                                                                #
-# Connects to the target MongoDB collection, retrieves documents in batches,                     #
-# and renames the specified fields in all matching documents.                                    #
+#                                               MAIN                                             #
 ##################################################################################################
 
 if __name__ == "__main__":

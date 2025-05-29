@@ -16,7 +16,7 @@
 ##################################################################################################
 
 ##################################################################################################
-#                                           IMPORTS                                              #
+#                                            IMPORTS                                             #
 ##################################################################################################
 
 from utils.database_connections import MongoDBConnection            # Database connection
@@ -27,7 +27,7 @@ from pymongo import InsertOne                                       # Bulk opera
 from os import cpu_count                                            # Optimized MAX_WORKERS num
 
 ##################################################################################################
-#                                         CONFIGURATION                                          #
+#                                        CONFIGURATION                                           #
 ##################################################################################################
 
 BATCH_SIZE = 500            # Number of documents per batch
@@ -47,20 +47,21 @@ MOVE_MODE = False  # If True, documents will be deleted from source after copyin
 LIMIT = None  # Limit on the number of documents to transfer (None for no limit)
 
 ##################################################################################################
-#                                        CHUNK CURSOR                                            #
-#                                                                                                #
-# Efficiently splits a MongoDB cursor into smaller batches to optimize processing.               #
-#                                                                                                #
-# This function helps to process large datasets by breaking them into manageable chunks.         #
-# Instead of loading all documents into memory at once, it yields smaller lists of documents,    #
-# reducing memory usage and improving performance.                                               #
-#                                                                                                #
-# :param cursor: MongoDB cursor to iterate through documents.                                    #
-# :param batch_size: The number of documents per batch to process at a time.                     #
-# :yield: Yields batches of documents as lists, ensuring efficient memory usage.                 #
+#                                        IMPLEMENTATION                                          #
 ##################################################################################################
 
 def chunk_cursor(cursor, batch_size):
+    """
+    Splits a MongoDB cursor into smaller, manageable batches for memory-efficient processing.
+
+    Args:
+        cursor: MongoDB cursor object pointing to the result set.
+        batch_size (int): Number of documents to include in each batch.
+
+    Yields:
+        list: A batch (chunk) of documents from the cursor.
+    """
+
     batch = []
     for doc in cursor:
         batch.append(doc)
@@ -71,20 +72,22 @@ def chunk_cursor(cursor, batch_size):
         yield batch
 
 '''
-##################################################################################################
-#                                PROCESS BATCH - UPSERT                                          #
-#                                                                                                #
-# This function processes a batch of MongoDB documents and inserts them into the target          #
-# collection. If a document with the same _id already exists in the target collection, it        #
-# will be updated (overwritten).                                                                 #
-#                                                                                                #
-# This is useful when you need to synchronize data between collections and ensure that the       #
-# latest version of each document is in the target collection.                                   #
-#                                                                                                #
-# If needed, uncomment the deletion line to move instead of copy.                                #
-##################################################################################################
-
 def process_batch_upsert(batch, source_conn, target_conn):
+    """
+    Inserts or updates documents in the target collection based on their `_id`.
+
+    - New documents (not present in the target) are inserted using `insert_many`.
+    - Existing documents (same `_id` already in target) are overwritten using `ReplaceOne`.
+    - If MOVE_MODE is enabled, inserted documents are deleted from the source collection after transfer.
+
+    This function supports efficient synchronization of inputs between collections.
+
+    Args:
+        batch (list): List of MongoDB documents to process.
+        source_conn (MongoDBConnection): MongoDB connection to the source collection.
+        target_conn (MongoDBConnection): MongoDB connection to the target collection.
+    """
+
     try:
         # Extract _id values from the current batch
         ids_batch = [doc["_id"] for doc in batch]
@@ -125,17 +128,19 @@ def process_batch_upsert(batch, source_conn, target_conn):
 
 '''
 
-##################################################################################################
-#                                PROCESS BATCH - INSERT MISSING                                  #
-#                                                                                                #
-# This function processes a batch of MongoDB documents and inserts only those that do not        #
-# already exist in the target collection. This prevents duplicates and ensures that only         #
-# missing documents are copied from the source collection.                                       #
-#                                                                                                #
-# This is useful when you want to transfer only new data without overwriting existing records.   #
-##################################################################################################
-
 def process_batch_insert_missing(batch, source_conn, target_conn):
+    """
+    Inserts only documents that are not already present in the target collection.
+
+    Ensures no duplicates by checking if each document's `_id` already exists in the target.
+    Optionally deletes transferred documents from the source collection if MOVE_MODE is enabled.
+
+    Args:
+        batch (list): List of documents to be processed.
+        source_conn (MongoDBConnection): Connection to the source MongoDB collection.
+        target_conn (MongoDBConnection): Connection to the target MongoDB collection.
+    """
+
     try:
         ids_batch = [doc["_id"] for doc in batch]
 
@@ -168,10 +173,7 @@ def process_batch_insert_missing(batch, source_conn, target_conn):
 
 
 ##################################################################################################
-#                                          MAIN SCRIPT                                           #
-#                                                                                                #
-# Connects to MongoDB collections, retrieves documents in batches, and processes them based on   #
-# the configuration.                                                                             #
+#                                               MAIN                                             #
 ##################################################################################################
 
 try:
